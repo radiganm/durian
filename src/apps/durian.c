@@ -3,10 +3,10 @@
  * All Rights Reserved
  */
 
-#include "packages/common/status.h"
+//#include "packages/common/status.h"
 
+//#include <iostream>
 #include <getopt.h>
-#include <iostream>
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
@@ -447,14 +447,98 @@
 //  return 0;
 //}
 //#endif /* HAVE_SETXATTR */
-//
-//static struct fuse_operations durian_ops = 
-//{
-//  .init         = durian_init,
-//  .getattr      = durian_getattr,
+
+  static struct options {
+    const char *filename;
+    const char *contents;
+    int show_help;
+  } options;
+
+  static void *durian_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
+  {
+    (void) conn;
+    cfg->kernel_cache = 1;
+    return NULL;
+  }
+
+  static int durian_getattr(const char *path, struct stat *stbuf, struct fuse_file_info *fi)
+  {
+    (void) fi;
+    int res = 0;
+    memset(stbuf, 0, sizeof(struct stat));
+    if(strcmp(path, "/") == 0) 
+    {
+      stbuf->st_mode = S_IFDIR | 0755;
+      stbuf->st_nlink = 2;
+    } 
+    else if(strcmp(path+1, options.filename) == 0) 
+    {
+      stbuf->st_mode = S_IFREG | 0444;
+      stbuf->st_nlink = 1;
+      stbuf->st_size = strlen(options.contents);
+    } 
+    else
+    {
+      res = -ENOENT;
+    }
+    return res;
+  }
+
+  static int durian_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+  {
+    (void) offset;
+    (void) fi;
+    (void) flags;
+    if(strcmp(path, "/") != 0)
+    {
+      return -ENOENT;
+    }
+    filler(buf, ".", NULL, 0, 0);
+    filler(buf, "..", NULL, 0, 0);
+    filler(buf, options.filename, NULL, 0, 0);
+    return 0;
+  }
+
+  static int durian_open(const char *path, struct fuse_file_info *fi)
+  {
+    if(strcmp(path+1, options.filename) != 0)
+      return -ENOENT;
+    if((fi->flags & O_ACCMODE) != O_RDONLY)
+      return -EACCES;
+    return 0;
+  }
+
+  static int durian_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+  {
+    size_t len;
+    (void) fi;
+    if(strcmp(path+1, options.filename) != 0)
+    {
+      return -ENOENT;
+    }
+    len = strlen(options.contents);
+    if(offset < len) 
+    {
+      if (offset + size > len)
+      {
+        size = len - offset;
+      }
+      memcpy(buf, options.contents + offset, size);
+    } 
+    else
+    {
+      size = 0;
+    }
+    return size;
+  }
+
+  static struct fuse_operations durian_ops = 
+  {
+    .init         = durian_init,
+    .getattr      = durian_getattr,
 //  .access       = durian_access,
 //  .readlink     = durian_readlink,
-//  .readdir      = durian_readdir,
+    .readdir      = durian_readdir,
 //  .mknod        = durian_mknod,
 //  .mkdir        = durian_mkdir,
 //  .symlink      = durian_symlink,
@@ -468,9 +552,9 @@
 //#ifdef HAVE_UTIMENSAT
 //  .utimens      = durian_utimens,
 //#endif
-//  .open         = durian_open,
+    .open         = durian_open,
 //  .create       = durian_create,
-//  .read         = durian_read,
+    .read         = durian_read,
 //  .write        = durian_write,
 //  .statfs       = durian_statfs,
 //  .release      = durian_release,
@@ -484,23 +568,27 @@
 //  .listxattr    = durian_listxattr,
 //  .removexattr  = durian_removexattr,
 //#endif
-//};
+  };
 
   int usage(int argc, char *argv[])
   {
+    /*
     std::cout << argv[0] << " - " << "durian" << std::endl;
     std::cout << "    -d,--debug           debug" << std::endl;
     std::cout << "    -v,--verbose         verbose" << std::endl;
     std::cout << "    -h,--help            print this help message" << std::endl;
+    */
     exit(1);
   }
 
   int main(int argc, char *argv[])
   {
-    status_t status;
-    bool debug;
-    bool verbose;
-    while(true)
+    options.filename = strdup("durian");
+    options.contents = strdup("Durian!\n");
+    //status_t status;
+    int debug = 0;
+    int verbose = 0;
+    while(1)
     {
       int this_option_optind = optind ? optind : 1;
       int option_index = 0;
@@ -515,10 +603,10 @@
       switch(c)
       {
         case 'd':
-          debug = true;
+          debug = 1;
           break;
         case 'v':
-          verbose = true;
+          verbose = 1;
           break;
         case 'h':
           usage(argc, argv);
@@ -528,9 +616,8 @@
     if(argc < 2) usage(argc, argv);
 
     umask(0);
-    //return fuse_main(argc, argv, &durian_ops, NULL);
+    return fuse_main(argc, argv, &durian_ops, NULL);
 
-    return status;
   }
 
 /* *EOF* */

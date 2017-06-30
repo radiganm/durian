@@ -13,6 +13,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/include                                        \
               -D_FILE_OFFSET_BITS=64                                         \
               `pkg-config fuse3 --cflags`                                    \
               -std=c++11
+AM_CFLAGS   = -I$(top_srcdir)/include                                        \
+              -D_FILE_OFFSET_BITS=64                                         \
+              `pkg-config fuse3 --cflags`                                     
 AM_FCFLAGS  = -Jmod
 
 durian_ldadd             = libdurian.la                                      \
@@ -20,7 +23,7 @@ durian_ldadd             = libdurian.la                                      \
 
 bin_PROGRAMS             = durian
 
-durian_SOURCES           = src/apps/durian.cc
+durian_SOURCES           = src/apps/durian.c
 durian_LDADD             = $(durian_ldadd)
 
 lib_LTLIBRARIES          = libdurian.la

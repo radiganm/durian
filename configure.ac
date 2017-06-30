@@ -9,6 +9,7 @@ AM_INIT_AUTOMAKE([1.10 foreign subdir-objects])
 LT_INIT
 AC_PROG_RANLIB
 
+AC_LANG(C)
 AC_LANG(C++)
 AC_PROG_CXX
 AC_SUBST([CC])
